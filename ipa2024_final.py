@@ -11,7 +11,7 @@ import time
 import os
 from dotenv import load_dotenv
 import restconf_final
-import netconf_final
+# import netconf_final
 import netmiko_final
 import ansible_final
 from requests_toolbelt.multipart.encoder import MultipartEncoder
@@ -32,6 +32,10 @@ roomIdToGetMessages = (
 )
 last_message_id = None
 current_method = None
+ACTION_COMMANDS = ["create", "delete", "enable", "disable", "status"]
+NETMIKO_COMMANDS = ["gigabit_status"]
+ANSIBLE_COMMANDS = ["showrun"]
+ALL_COMMANDS = ACTION_COMMANDS + NETMIKO_COMMANDS + ANSIBLE_COMMANDS
 
 while True:
     # always add 1 second of delay to the loop to not go over a rate limit of API calls
@@ -102,6 +106,18 @@ while True:
             elif command == "netconf":
                 current_method = "netconf"
                 responseMessage = "Ok: Netconf"
+            elif command in ALL_COMMANDS:
+                # กรณี: /... create (เป็น action command)
+                if current_method is None:
+                    responseMessage = "Error: No method specified"
+                else:
+                    responseMessage = "Error: No IP specified."
+            elif command.startswith("10.0.15."):
+                    # กรณี: /... 10.0.15.61 (เป็น IP) (ตามที่คุณขอ)
+                if current_method is None:
+                    responseMessage = "Error: No method specified"
+                else:
+                    responseMessage = "Error: No command found."
             else:
                 responseMessage = "Error: No method specified."
             command_processed = True
@@ -132,6 +148,7 @@ while True:
                     #     responseMessage = ansible_final.showrun()
                     else:
                         responseMessage = "Error: No command found"
+
                 elif current_method == "netconf":
                     if command == "create":
                         responseMessage = netconf_final.create(ip_address)
