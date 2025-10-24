@@ -10,7 +10,6 @@
     ansible_connect_timeout: 30
     ansible_command_timeout: 120
     ansible_ssh_retries: 2
-    motd_message: none
 
   tasks:
     - name: Collect running configuration
@@ -22,7 +21,7 @@
           - result[1] contains version
         match: all
       register: show_run
-      when: motd_message is none
+      when: motd_message is not defined
 
     - name: Save running configuration locally
       ansible.builtin.copy:
@@ -31,12 +30,11 @@
         mode: "0644"
       delegate_to: localhost
       run_once: true
-      when: motd_message is none
+      when: motd_message is not defined
 
     - name: Set MOTD banner
       cisco.ios.ios_banner:
         banner: motd
         text: "{{ motd_message }}"
         state: present
-
-      when: motd_message is not none
+      when: motd_message is defined
