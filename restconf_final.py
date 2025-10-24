@@ -17,7 +17,6 @@ def create(ip_address):
     yangConfig = {
         "ietf-interfaces:interface": {
             "name": INTERFACE_NAME,
-            "description": "Thanat's Loopback interface",
             "type": "iana-if-type:softwareLoopback",
             "enabled": True,
             "ietf-ip:ipv4": {

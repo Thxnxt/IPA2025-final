@@ -11,7 +11,7 @@ import time
 import os
 from dotenv import load_dotenv
 import restconf_final
-# import netconf_final
+import netconf_final
 import netmiko_final
 import ansible_final
 from requests_toolbelt.multipart.encoder import MultipartEncoder
@@ -142,10 +142,10 @@ while True:
                         responseMessage = restconf_final.disable(ip_address)
                     elif command == "status":
                         responseMessage = restconf_final.status(ip_address)
-                    # elif command == "gigabit_status":
-                    #     responseMessage = netmiko_final.gigabit_status()
-                    # elif command == "showrun":
-                    #     responseMessage = ansible_final.showrun()
+                    elif command == "gigabit_status":
+                        responseMessage = netmiko_final.gigabit_status()
+                    elif command == "showrun":
+                        responseMessage = ansible_final.showrun()
                     else:
                         responseMessage = "Error: No command found"
 
@@ -160,10 +160,10 @@ while True:
                         responseMessage = netconf_final.disable(ip_address)
                     elif command == "status":
                         responseMessage = netconf_final.status(ip_address)
-                    # elif command == "gigabit_status":
-                    #     responseMessage = netmiko_final.gigabit_status()
-                    # elif command == "showrun":
-                    #     responseMessage = ansible_final.showrun()
+                    elif command == "gigabit_status":
+                        responseMessage = netmiko_final.gigabit_status()
+                    elif command == "showrun":
+                        responseMessage = ansible_final.showrun()
                     else:
                         responseMessage = "Error: No command found"
 
