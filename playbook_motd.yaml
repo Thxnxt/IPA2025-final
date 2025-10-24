@@ -1,15 +1,14 @@
 ---
 - name: Configure MOTD
-  hosts: cisco
-  gather_facts: false
+  hosts: all
   connection: network_cli
-
+  gather_facts: no
   vars:
-    motd_message: "i love networking!"
-
+    ansible_network_os: cisco.ios.ios
+    ansible_user: "{{ username }}"
+    ansible_password: "{{ password }}"
   tasks:
-    - name: Set MOTD banner
-      cisco.ios.ios_banner:
-        banner: motd
-        text: "{{ motd_message }}"
-        state: present
+    - name: Set MOTD Banner
+      ios_config:
+        lines:
+          - banner motd ^{{ motd_message }}^
