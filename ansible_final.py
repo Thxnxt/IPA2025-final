@@ -30,7 +30,7 @@ def showrun(ip):
     cmd = [
         "ansible-playbook",
         "playbook_motd.yaml", 
-        "-i", "hosts",
+        "-i", f"{ip},",
         "--limit", ip,
         "--extra-vars", f"student_id={student_id} username=admin password=cisco"
     ]
