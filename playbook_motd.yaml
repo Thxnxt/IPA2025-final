@@ -1,24 +1,16 @@
 ---
-- name: Configure MOTD
+- name: Configure MOTD banner on Cisco IOS
   hosts: all
+  gather_facts: no
   connection: network_cli
-  gather_facts: false
   vars:
     ansible_network_os: cisco.ios.ios
     ansible_user: "{{ username }}"
     ansible_password: "{{ password }}"
+
   tasks:
-    - name: Set MOTD banner using block (to avoid C prefix)
-      ios_config:
-        lines:
-          - no banner motd
-    - name: Configure MOTD cleanly
-      ios_config:
-        parents: []
-        lines: []
-        before: []
-        after: []
-        match: none
-        replace: config
-        commands:
-          - banner motd @{{ motd_message }}@
+    - name: Set MOTD banner
+      cisco.ios.ios_banner:
+        banner: motd
+        text: "{{ motd_message }}"
+        state: present
