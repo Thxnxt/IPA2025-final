@@ -95,6 +95,12 @@ while True:
         parts = text.split(" ")
         responseMessage = ""
         command_processed = False
+        if parts[1].lower() == "gigabit_status":
+            responseMessage = netmiko_final.gigabit_status()
+            command_processed = True
+        elif parts[1].lower() == "showrun":
+            responseMessage = ansible_final.showrun()
+            command_processed = True
 
 # 5. Complete the logic for each command
         if len(parts) == 2:
