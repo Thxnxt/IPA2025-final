@@ -52,4 +52,4 @@ def motd(ip, message):
     if 'failed=0' in result.stdout:
         return "Ok: success"
     else:
-        return "Error: Failed to configure MOTD"
+        return "Error: No MOTD Configured"
