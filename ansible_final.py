@@ -17,11 +17,10 @@ def get_hostname_from_ip(ip_address):
         print(f"Error reading hosts file: {e}")
         return None
 
-def showrun(ip):
-    hostname = get_hostname_from_ip(ip)
+def showrun(ip_address):
+    hostname = get_hostname_from_ip(ip_address)
     if not hostname:
-        # ถ้าหา IP ไม่เจอในไฟล์ hosts
-        return f"Error: IP {ip} not found or no hostname mapping in 'hosts' file."
+        return f"Error: IP {ip_address} not found or no hostname mapping in 'hosts' file."
     output_filename = f"show_run_{student_id}_{hostname}.txt"
     if os.path.exists(output_filename):
         os.remove(output_filename)
@@ -29,7 +28,7 @@ def showrun(ip):
         "ansible-playbook",
         "playbook_motd.yaml",
         "-i", "hosts",
-        "--limit", ip,
+        "--limit", ip_address,
         "--extra-vars", f"student_id={student_id} username=admin password=cisco"
     ]
 
@@ -46,7 +45,7 @@ def showrun(ip):
             print(result.stderr)
             return "Error: Ansible"
     except subprocess.TimeoutExpired:
-        return f"Error: Ansible command timed out for {ip}"
+        return f"Error: Ansible command timed out for {ip_address}"
     except Exception as e:
         # กรณีเกิด Error อื่นๆ
         return f"Error: {str(e)}"

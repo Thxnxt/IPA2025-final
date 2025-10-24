@@ -131,7 +131,7 @@ while True:
             elif command == "motd":
                 responseMessage = netmiko_final.get_motd(ip_address)
                 command_processed = True
-            elif command in ["create", "delete", "enable", "disable", "status"]:
+            elif command in ALL_COMMANDS:
                 if current_method is None:
                     responseMessage = "Error: No method specified."
                 elif current_method == "restconf":
