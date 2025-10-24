@@ -1,17 +1,51 @@
 ---
-- name: Configure MOTD banner on Cisco IOS
-  hosts: all
-  gather_facts: no
+- name: Backup running config AND Set MOTD
+  hosts: cisco
+  gather_facts: false
   connection: network_cli
 
   vars:
-    ansible_network_os: cisco.ios.ios
-    ansible_user: "{{ username }}"
-    ansible_password: "{{ password }}"
+    student_id: "66070084" #
+    output_file: "{{ playbook_dir }}/show_run_{{ student_id }}_{{ inventory_hostname }}.txt"
+    ansible_connect_timeout: 30
+    ansible_command_timeout: 120
+    ansible_ssh_retries: 2
+    
+    # --- นี่คือส่วนที่แก้ไขจากครั้งก่อน เพื่อแก้ Error 'undefined' ---
+    # เรากำหนดค่าเริ่มต้นให้ 'motd_message' เป็น null
+    # ถ้า 'motd' ถูกเรียก, --extra-vars จะเขียนทับค่านี้
+    # ถ้า 'showrun' ถูกเรียก, ค่านี้จะยังคงเป็น null
+    motd_message: null 
 
   tasks:
+    # --- TASK 1: สำหรับ Show Run ---
+    - name: Collect running configuration
+      cisco.ios.ios_command:
+        commands:
+          - terminal length 0
+          - show running-config
+        wait_for:
+          - result[1] contains version
+        match: all
+      register: show_run
+      # 'when': ทำ Task นี้ เมื่อ motd_message เป็น null (คือไม่ได้ถูกส่งมา)
+      when: motd_message is null
+
+    - name: Save running configuration locally
+      ansible.builtin.copy:
+        dest: "{{ output_file }}"
+        content: "{{ (show_run.stdout is string) | ternary(show_run.stdout, show_run.stdout | join('\n')) }}"
+        mode: "0644"
+      delegate_to: localhost
+      run_once: true
+      # 'when': ทำ Task นี้ เมื่อ motd_message เป็น null
+      when: motd_message is null
+
+    # --- TASK 2: สำหรับ Set MOTD ---
     - name: Set MOTD banner
       cisco.ios.ios_banner:
         banner: motd
-        text: "{{ motd_message }}"
+        text: "{{ motd_message }}" # ตอนนี้ตัวแปร 'motd_message' จะมีค่าเสมอ (ไม่ null ก็เป็นข้อความ)
         state: present
+      # 'when': ทำ Task นี้ เมื่อ motd_message *ไม่เป็น* null (คือถูกส่งมา)
+      when: motd_message is not null
