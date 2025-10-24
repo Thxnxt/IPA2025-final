@@ -13,22 +13,82 @@ device_params = {
     "conn_timeout": 60,
 }
 
-def gigabit_status():
-    ip = "10.0.15.61"  # หรือ IP ที่คุณต้องการใช้ตลอด
-    device_params = {
+def gigabit_status(ip):
+    device = {
         "device_type": "cisco_ios",
-        "ip": ip,
+        "host": ip,
         "username": "admin",
         "password": "cisco",
-        "conn_timeout": 60,
+        "fast_cli": True
     }
 
     try:
-        with ConnectHandler(**device_params) as ssh:
+        with ConnectHandler(**device) as ssh:
+            ssh.enable()
             ssh.disable_paging()
-            out = ssh.send_command("show ip interface brief | include GigabitEthernet")
-        lines = [l.strip() for l in out.splitlines() if l.strip()]
-        return "\n".join(lines) if lines else "No GigabitEthernet interfaces found."
+            
+            # พยายามใช้ TextFSM ถ้ามี template
+            try:
+                result = ssh.send_command("show ip interface brief", use_textfsm=True)
+                if isinstance(result, list):
+                    gigabits = [row for row in result if row.get('interface', '').startswith("GigabitEthernet")]
+                    
+                    interface_messages = []
+                    count_up = count_down = count_admin_down = 0
+
+                    for row in gigabits:
+                        name = row.get('interface', '')
+                        status = row.get('status', '').lower()
+                        
+                        if status == 'up':
+                            interface_messages.append(f"{name} up")
+                            count_up += 1
+                        elif status == 'down':
+                            interface_messages.append(f"{name} down")
+                            count_down += 1
+                        elif 'administratively down' in status:
+                            interface_messages.append(f"{name} administratively down")
+                            count_admin_down += 1
+                        else:
+                            interface_messages.append(f"{name} {status}")
+
+                    if interface_messages:
+                        summary = f" -> {count_up} up, {count_down} down, {count_admin_down} administratively down"
+                        return ", ".join(interface_messages) + summary
+                    else:
+                        return "No GigabitEthernet interfaces found."
+            except Exception:
+                pass  # ถ้าไม่มี TextFSM template จะใช้ regex ด้านล่างแทน
+
+            # fallback: ใช้ manual parsing
+            raw = ssh.send_command("show ip interface brief | include GigabitEthernet")
+            lines = [l.strip() for l in raw.splitlines() if l.strip()]
+            if not lines:
+                return "No GigabitEthernet interfaces found."
+
+            interface_messages = []
+            count_up = count_down = count_admin_down = 0
+
+            for line in lines:
+                parts = line.split()
+                if len(parts) >= 6:
+                    name = parts[0]
+                    status = parts[4].lower()
+                    if status == 'up':
+                        interface_messages.append(f"{name} up")
+                        count_up += 1
+                    elif status == 'down':
+                        interface_messages.append(f"{name} down")
+                        count_down += 1
+                    elif 'administratively down' in status:
+                        interface_messages.append(f"{name} administratively down")
+                        count_admin_down += 1
+                    else:
+                        interface_messages.append(f"{name} {status}")
+
+            summary = f" -> {count_up} up, {count_down} down, {count_admin_down} administratively down"
+            return ", ".join(interface_messages) + summary
+
     except Exception as e:
         return f"Error: {str(e)}"
 
