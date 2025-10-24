@@ -14,26 +14,23 @@ device_params = {
 }
 
 def gigabit_status():
-    ans = ""
-    with ConnectHandler(**device_params) as ssh:
-        ssh.disable_paging()
-        up = 0
-        down = 0
-        admin_down = 0
-        interfaces = []
-        result = ssh.send_command("sh ip int bri", use_textfsm=True)
-        for status in result:
-            if status["interface"].startswith("GigabitEthernet"):
-                interfaces.append(f"{status['interface']} {status['status']}")
-                if status["status"] == "up":
-                    up += 1
-                elif status["status"] == "down":
-                    down += 1
-                elif status["status"] == "administratively down":
-                    admin_down += 1
-        ans = ", ".join(interfaces) + f" -> {up} up, {down} down, {admin_down} administratively down"
-        pprint(ans)
-        return ans
+    ip = "10.0.15.61"  # หรือ IP ที่คุณต้องการใช้ตลอด
+    device_params = {
+        "device_type": "cisco_ios",
+        "ip": ip,
+        "username": "admin",
+        "password": "cisco",
+        "conn_timeout": 60,
+    }
+
+    try:
+        with ConnectHandler(**device_params) as ssh:
+            ssh.disable_paging()
+            out = ssh.send_command("show ip interface brief | include GigabitEthernet")
+        lines = [l.strip() for l in out.splitlines() if l.strip()]
+        return "\n".join(lines) if lines else "No GigabitEthernet interfaces found."
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 def get_motd(ip):
     device_params = {

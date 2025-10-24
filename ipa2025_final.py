@@ -106,7 +106,7 @@ while True:
             elif command == "showrun":
                 responseMessage = ansible_final.showrun()
                 command_processed = True
-            if command == "restconf":
+            elif command == "restconf":
                 current_method = "restconf"
                 responseMessage = "Ok: Restconf"
             elif command == "netconf":

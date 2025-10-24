@@ -1,32 +1,29 @@
 import subprocess
 import os
-import datetime
 
 hostname = "Exam"
 student_id = "66070084"
 output_filename = f"show_run_{student_id}_{hostname}.txt"
 
 def showrun():
-    if os.path.exists(output_filename):
-        os.remove(output_filename)
+    ip = "10.0.15.61"  # หรือ IP ตายตัว
+    output_filename = "show_run_static.txt"
+    cmd = [
+        "ansible-playbook",
+        "playbook_showrun.yaml",
+        "-i", f"{ip},",
+        "--extra-vars", "username=admin password=cisco"
+    ]
 
-    command = ['ansible-playbook', 'playbook.yaml']
-    result = subprocess.run(command, capture_output=True, text=True)
-    
-    # --- นี่คือส่วนที่แก้ไข ---
-    # เราจะพิมพ์ทั้ง stdout (ผลลัพธ์ปกติ) และ stderr (ผลลัพธ์ Error)
-    print("----- Ansible STDOUT -----")
-    print(result.stdout)
-    print("----- Ansible STDERR (Error) -----")
-    print(result.stderr) # <-- เพิ่มบรรทัดนี้เพื่อดู Error ที่แท้จริง
-    print("----- End Ansible Output -----")
-
-    # เราจะเช็คผลลัพธ์จาก stdout เหมือนเดิม
-    # แต่ตอนนี้เราจะเห็น Error ที่แท้จริงใน Terminal แล้ว
-    if 'failed=0' in result.stdout:
-        return output_filename
-    else:
-        return "Error: Ansible playbook failed. Please check terminal for errors."
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        with open(output_filename, "w", encoding="utf-8") as f:
+            f.write(result.stdout.strip())
+        if result.returncode == 0 and os.path.exists(output_filename):
+            return output_filename
+        return "Error: Failed to get running-config"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 def motd(ip, message):
     command = [
