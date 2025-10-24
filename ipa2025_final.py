@@ -128,6 +128,9 @@ while True:
             if not ip_address.startswith("10.0.15."):
                 responseMessage = f"Error: Invalid IP address '{ip_address}'"
                 command_processed = True
+            elif command == "motd":
+                responseMessage = netmiko_final.get_motd(ip_address)
+                command_processed = True
             elif command in ["create", "delete", "enable", "disable", "status"]:
                 if current_method is None:
                     responseMessage = "Error: No method specified."
