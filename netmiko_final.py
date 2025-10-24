@@ -28,12 +28,11 @@ def gigabit_status(ip):
         with ConnectHandler(**device) as ssh:
             ssh.enable()
             ssh.disable_paging()
-            
-            # พยายามใช้ TextFSM ถ้ามี template
+
             try:
                 result = ssh.send_command("show ip interface brief", use_textfsm=True)
-                if isinstance(result, list):
-                    # กรองเฉพาะ GigabitEthernet
+                # เช็คให้ชัวร์ว่า result เป็น list และมีข้อมูล
+                if isinstance(result, list) and len(result) > 0: 
                     gigabits = [row for row in result if row.get('interface', '').startswith("GigabitEthernet")]
                     
                     interface_messages = []
@@ -53,47 +52,51 @@ def gigabit_status(ip):
                             interface_messages.append(f"{name} administratively down")
                             count_admin_down += 1
                         else:
-                            # สำหรับสถานะอื่น ๆ เช่น 'down (disabled)'
                             interface_messages.append(f"{name} {status}")
 
                     if interface_messages:
-                        # สร้างข้อความสรุปตามรูปแบบที่โจทย์ต้องการ
                         summary = f" -> {count_up} up, {count_down} down, {count_admin_down} administratively down"
                         return ", ".join(interface_messages) + summary
                     else:
-                        return "No GigabitEthernet interfaces found."
-            except Exception:
-                pass  # ถ้า TextFSM ล้มเหลว จะใช้ manual parsing ด้านล่าง
+                        return "No GigabitEthernet interfaces found (TextFSM)."
+            except Exception as e:
+                print(f"TextFSM failed: {e}. Using manual parsing.")
+                pass
 
-            # fallback: ใช้ manual parsing (กรณีไม่มี TextFSM)
-            raw = ssh.send_command("show ip interface brief | include GigabitEthernet")
+            raw = ssh.send_command("show ip interface brief")
             lines = [l.strip() for l in raw.splitlines() if l.strip()]
             if not lines:
-                return "No GigabitEthernet interfaces found."
+                return "No interface data found (Manual)."
 
             interface_messages = []
             count_up = count_down = count_admin_down = 0
 
             for line in lines:
-                parts = line.split()
-                if len(parts) >= 6:
-                    name = parts[0]
-                    # สถานะอยู่ที่ index 4 (status) และ 5 (protocol)
-                    # แต่เราสนใจแค่ status (index 4) หรือถ้าเป็น admin down (index 4+5)
-                    status_line = " ".join(parts[4:]).lower() # เอาส่วนที่เหลือมาต่อกัน
-                    
-                    if 'administratively down' in status_line:
-                        interface_messages.append(f"{name} administratively down")
-                        count_admin_down += 1
-                    elif 'up' in parts[4].lower(): # ตรวจสอบ status
-                        interface_messages.append(f"{name} up")
-                        count_up += 1
-                    elif 'down' in parts[4].lower():
-                        interface_messages.append(f"{name} down")
-                        count_down += 1
-                    else:
-                        interface_messages.append(f"{name} {status_line}")
+                if not line.startswith("GigabitEthernet"):
+                    continue
 
+                parts = line.split()
+                if len(parts) < 6:
+                    continue
+
+                name = parts[0]
+                status_line = " ".join(parts[4:]).lower() 
+
+                if 'administratively down' in status_line:
+                    interface_messages.append(f"{name} administratively down")
+                    count_admin_down += 1
+                elif parts[4].lower() == 'up':
+                    interface_messages.append(f"{name} up")
+                    count_up += 1
+                elif parts[4].lower() == 'down':
+                    interface_messages.append(f"{name} down")
+                    count_down += 1
+                else:
+                    interface_messages.append(f"{name} {status_line}")
+
+            if not interface_messages:
+                return "No GigabitEthernet interfaces found (Manual)."
+                
             summary = f" -> {count_up} up, {count_down} down, {count_admin_down} administratively down"
             return ", ".join(interface_messages) + summary
 

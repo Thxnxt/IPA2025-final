@@ -16,38 +16,40 @@ def get_hostname_from_ip(ip_address):
     except Exception as e:
         print(f"Error reading hosts file: {e}")
         return None
+    return None
 
-def showrun(ip_address):
-    hostname = get_hostname_from_ip(ip_address)
+def showrun(ip):
+    hostname = get_hostname_from_ip(ip)
+    
     if not hostname:
-        return f"Error: IP {ip_address} not found or no hostname mapping in 'hosts' file."
+        return f"Error: IP {ip} not found in 'hosts' file."
     output_filename = f"show_run_{student_id}_{hostname}.txt"
     if os.path.exists(output_filename):
         os.remove(output_filename)
+
     cmd = [
         "ansible-playbook",
-        "playbook_motd.yaml",
+        "playbook_motd.yaml", 
         "-i", "hosts",
-        "--limit", ip_address,
+        "--limit", ip,
         "--extra-vars", f"student_id={student_id} username=admin password=cisco"
     ]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+
         if result.returncode == 0 and os.path.exists(output_filename):
-            # สำเร็จ: คืนชื่อไฟล์กลับไป
             return output_filename
         else:
-            # ล้มเหลว: คืน 'Error: Ansible' ตามโจทย์
-            print("----- Ansible STDOUT (Error) -----")
+            print("----- Ansible STDOUT (Error showrun) -----")
             print(result.stdout)
-            print("----- Ansible STDERR (Error) -----")
+            print("----- Ansible STDERR (Error showrun) -----")
             print(result.stderr)
             return "Error: Ansible"
+            
     except subprocess.TimeoutExpired:
-        return f"Error: Ansible command timed out for {ip_address}"
+        return f"Error: Ansible command timed out for {ip}"
     except Exception as e:
-        # กรณีเกิด Error อื่นๆ
         return f"Error: {str(e)}"
 
 def motd(ip, message):
