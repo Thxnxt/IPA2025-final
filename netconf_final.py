@@ -1,22 +1,27 @@
 from ncclient import manager
 import xmltodict
+from ncclient.operations.rpc import RPCError
 
 INTERFACE_NAME = "Loopback66070084"
 
 def netconf_connect(ip_address):
-    m = manager.connect(
-        host=ip_address,
-        port=830,
-        username="admin",
-        password="cisco",
-        hostkey_verify=False,
-    )
-    return m
+    try:
+        m = manager.connect(
+            host=ip_address,
+            port=830,
+            username="admin",
+            password="cisco",
+            hostkey_verify=False,
+        )
+        return m
+    except Exception as e:
+        print(f"Connection failed: {e}")
+        return None
 def create(ip_address):
     netconf_config = f"""
     <config>
       <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-        <interface>
+        <interface operation="create">
           <name>{INTERFACE_NAME}</name>
           <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:softwareLoopback</type>
           <enabled>true</enabled>
@@ -35,15 +40,18 @@ def create(ip_address):
         return f"Error: Cannot connect to {ip_address} (NETCONF)."
 
     try:
-        netconf_reply = netconf_edit_config(m, netconf_config)
-        xml_data = netconf_reply.xml
-        print(xml_data)
-        if '<ok/>' in xml_data:
-            return f"Interface {INTERFACE_NAME} is created successfully using Netconf."
+        m.edit_config(target="running", config=netconf_config)
+        return f"Interface {INTERFACE_NAME} is created successfully using Netconf."
+    except RPCError as e:
+        if e.tag == 'data-exists':
+            print(f"Interface already exists: {e}")
+            return f"Cannot create: Interface {INTERFACE_NAME}."
         else:
+            print(f"Error! {e}")
             return f"Cannot create: interface {INTERFACE_NAME}."
     except Exception as e:
         print(f"Error! {e}")
+        return f"Cannot create: interface {INTERFACE_NAME}"
 
 
 def delete(ip_address):
@@ -61,15 +69,19 @@ def delete(ip_address):
         return f"Error: Cannot connect to {ip_address} (NETCONF)."
 
     try:
-        netconf_reply = netconf_edit_config(m, netconf_config)
-        xml_data = netconf_reply.xml
-        print(xml_data)
-        if '<ok/>' in xml_data:
-            return f"Interface {INTERFACE_NAME} is deleted successfully using Netconf."
+        m.edit_config(target="running", config=netconf_config)
+        return f"Interface {INTERFACE_NAME} is deleted successfully using Netconf."
+    except RPCError as e:
+        # 'invalid-value' หรือ 'data-missing' มักหมายความว่าสิ่งที่พยายามลบไม่มีอยู่
+        if e.tag == 'data-missing' or e.tag == 'invalid-value':
+            print(f"Interface not found to delete: {e}")
+            return f"Cannot delete: Interface {INTERFACE_NAME}."
         else:
-            return f"Cannot delete: interface {INTERFACE_NAME}."
+            print(f"Error! {e}")
+            return f"Cannot delete: interface {INTERFACE_NAME}"
     except Exception as e:
         print(f"Error! {e}")
+        return f"Cannot delete: interface {INTERFACE_NAME}"
 
 
 def enable(ip_address):
@@ -88,15 +100,19 @@ def enable(ip_address):
         return f"Error: Cannot connect to {ip_address} (NETCONF)."
 
     try:
-        netconf_reply = netconf_edit_config(m, netconf_config)
-        xml_data = netconf_reply.xml
-        print(xml_data)
-        if '<ok/>' in xml_data:
-            return f"Interface {INTERFACE_NAME} is enabled successfully using Netconf."
-        else:
+        m.edit_config(target="running", config=netconf_config)
+        return f"Interface {INTERFACE_NAME} is enabled successfully using Netconf."
+    except RPCError as e:
+        # ถ้า interface ไม่มีอยู่จริง จะ merge <enabled> เข้าไปไม่ได้
+        if e.tag == 'data-missing' or e.tag == 'invalid-value':
+            print(f"Interface not found to enable: {e}")
             return f"Cannot enable: Interface {INTERFACE_NAME}."
+        else:
+            print(f"Error! {e}")
+            return f"Cannot enable: interface {INTERFACE_NAME}."
     except Exception as e:
         print(f"Error! {e}")
+        return f"Cannot enable: interface {INTERFACE_NAME}."
 
 
 def disable(ip_address):
@@ -115,83 +131,72 @@ def disable(ip_address):
         return f"Error: Cannot connect to {ip_address} (NETCONF)."
 
     try:
-        netconf_reply = netconf_edit_config(m, netconf_config)
-        xml_data = netconf_reply.xml
-        print(xml_data)
-        if '<ok/>' in xml_data:
-            return f"Interface {INTERFACE_NAME} is shutdowned successfully using Netconf."
+        m.edit_config(target="running", config=netconf_config)
+        return f"Interface {INTERFACE_NAME} is disabled successfully using Netconf."
+    except RPCError as e:
+        if e.tag == 'data-missing' or e.tag == 'invalid-value':
+            print(f"Interface not found to disable: {e}")
+            return f"Cannot disable: Interface {INTERFACE_NAME}."
         else:
-            return f"Cannot shutdown: Interface {INTERFACE_NAME} (checked by Netconf)."
+            print(f"Error! {e}")
+            return f"Cannot disable: interface {INTERFACE_NAME}."
     except Exception as e:
         print(f"Error! {e}")
+        return f"Cannot disable: interface {INTERFACE_NAME}."
 
-def netconf_edit_config(m, netconf_config):
-    return m.edit_config(target="running", config=netconf_config)
+# def netconf_edit_config(m, netconf_config):
+#     return m.edit_config(target="running", config=netconf_config)
 
 
 def status(ip_address):
-    
-    # 3.1 สร้าง Filter
-    netconf_filter = f"""
-    <filter>
-      <interfaces-state xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces-state">
-        <interface>
-          <name>{INTERFACE_NAME}</name>
-          <admin-status/>
-          <oper-status/>
-        </interface>
-      </interfaces-state>
-    </filter>
-    """
-
-    # 3.2 เชื่อมต่อ
     m = netconf_connect(ip_address)
     if m is None:
         return f"Error: Cannot connect to {ip_address} (NETCONF)."
 
     try:
-        # 3.3 รัน m.get()
-        netconf_reply = m.get(filter=netconf_filter)
-        print(netconf_reply) # พิมพ์ผลลัพธ์ XML ดิบ
-        
+        filter = """
+        <filter>
+          <interfaces-state xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"/>
+        </filter>
+        """
+        print("Attempting m.get() with interfaces-state filter...")
+        netconf_reply = m.get(filter)
         netconf_reply_dict = xmltodict.parse(netconf_reply.xml)
+        data_content = netconf_reply_dict.get('rpc-reply', {}).get('data')
 
-        # 3.4 ตรวจสอบผลลัพธ์ (นี่คือส่วนที่เลียนแบบ if/elif/else)
-        
-        rpc_reply_data = netconf_reply_dict.get('rpc-reply', {}).get('data')
+        if not data_content:
+            return "No data found (checked by Netconf)."
 
-        # --- ตรรกะเทียบเท่า "if (resp.status_code >= 200 ...)" ---
-        # ถ้า 'data' ไม่ว่างเปล่า (None) และมี 'interfaces-state' อยู่ข้างใน
-        if rpc_reply_data is not None and 'interfaces-state' in rpc_reply_data:
-            
-            interface_data = rpc_reply_data.get('interfaces-state', {}).get('interface')
-            
-            # (กันเหนียว) ถ้า <interfaces-state> ว่างเปล่า
-            if interface_data is None:
-                print("STATUS NOT FOUND: (interfaces-state is empty)")
-                return f"No Interface {INTERFACE_NAME} (checked by Netconf)."
-            
-            # --- เริ่มตรรกะ Success ---
-            print("STATUS OK: (Data found)")
-            admin_status = interface_data.get("admin-status", "unknown")
-            oper_status = interface_data.get("oper-status", "unknown")
+        # รองรับ namespace แบบ {urn:ietf:...}interfaces-state
+        interfaces_state_data = None
+        for key in data_content:
+            if 'interfaces-state' in key:
+                interfaces_state_data = data_content[key]
+                break
 
-            if admin_status == 'up' and oper_status == 'up':
-                return f"Interface {INTERFACE_NAME} is enabled (checked by Netconf)."
-            elif admin_status == 'down' and oper_status == 'down':
-                return f"Interface {INTERFACE_NAME} is disabled (checked by Netconf)."
-            else:
-                # กรณีอื่นๆ เช่น up/down
-                return f"Interface {INTERFACE_NAME} state is: admin={admin_status}, oper={oper_status} (checked by Netconf)."
-        
-        # --- ตรรกะเทียบเท่า "elif (resp.status_code == 404)" ---
-        # ถ้า 'data' ว่างเปล่า (None) หรือ ไม่มี 'interfaces-state' (แปลว่าหาไม่เจอ)
-        else:
-            print(f"STATUS NOT FOUND: (Data is empty or key not found)")
-            return f"No Interface {INTERFACE_NAME} (checked by Netconf)."
+        if not interfaces_state_data:
+            return "No Interface data found (checked by Netconf)."
+
+        interfaces_list = interfaces_state_data.get('interface')
+        if not interfaces_list:
+            return "No Interface data found (checked by Netconf)."
+
+        if not isinstance(interfaces_list, list):
+            interfaces_list = [interfaces_list]
+
+        for iface in interfaces_list:
+            if iface.get('name') == INTERFACE_NAME:
+                admin_status = iface.get("admin-status", "unknown")
+                oper_status = iface.get("oper-status", "unknown")
+                if admin_status == 'up' and oper_status == 'up':
+                    return f"Interface {INTERFACE_NAME} is enabled (checked by Netconf)."
+                elif admin_status == 'down' and oper_status == 'down':
+                    return f"Interface {INTERFACE_NAME} is disabled (checked by Netconf)."
+                else:
+                    return f"Interface {INTERFACE_NAME} state is: admin={admin_status}, oper={oper_status} (checked by Netconf)."
+
+        return f"No Interface {INTERFACE_NAME} (checked by Netconf)."
 
     except Exception as e:
-        # --- ตรรกะเทียบเท่า "else: print(Error)" ---
-        # (เช่น m.get() ล้มเหลว, XML ผิดพลาด, Timeout ระหว่าง get)
-        print(f'Error. Exception during GET: {e}')
-        return f"Error getting status for {INTERFACE_NAME}. (Exception: {e})"
+        print(f"Error during status check: {e}")
+        return f"Error getting status for {INTERFACE_NAME}"
