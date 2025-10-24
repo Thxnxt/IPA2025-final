@@ -47,18 +47,17 @@ def get_motd(ip):
     try:
         with ConnectHandler(**device_params) as ssh:
             ssh.disable_paging()
-            result = ssh.send_command("show run | include banner motd")
-            # ตัวอย่าง output: banner motd ^Authorized users only! Managed by 66070123^
-            if not result.strip():
+            out = ssh.send_command("show banner motd")
+            if out and out.strip() and "No banner" not in out and "not configured" not in out:
+                return out.strip()
+            run = ssh.send_command("show running-config | section banner motd")
+            import re
+            m = re.search(r"banner\\s+motd\\s+(\\S)([\\s\\S]*?)\\1", run)
+            if m:
+                return m.group(2).strip()
+
+            if not out.strip() and not run.strip():
                 return "Error: No MOTD Configured"
-            if "banner motd" in result:
-                start = result.find("^") + 1
-                end = result.rfind("^")
-                if start > 0 and end > start:
-                    return result[start:end].strip()
-                else:
-                    return "Error: Unable to parse MOTD"
-            else:
-                return "Error: No MOTD Configured"
+            return "Error: Unable to parse MOTD"
     except Exception as e:
         return f"Error: {str(e)}"
