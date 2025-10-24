@@ -11,6 +11,7 @@ import time
 import os
 from dotenv import load_dotenv
 import restconf_final
+import netconf_final
 import netmiko_final
 import ansible_final
 from requests_toolbelt.multipart.encoder import MultipartEncoder
@@ -30,6 +31,8 @@ roomIdToGetMessages = (
     "Y2lzY29zcGFyazovL3VybjpURUFNOnVzLXdlc3QtMl9yL1JPT00vYmQwODczMTAtNmMyNi0xMWYwLWE1MWMtNzkzZDM2ZjZjM2Zm"
 )
 last_message_id = None
+current_method = None
+
 while True:
     # always add 1 second of delay to the loop to not go over a rate limit of API calls
     time.sleep(1)
@@ -66,46 +69,87 @@ while True:
         raise Exception("There are no messages in the room.")
 
     # store the array of messages
-    messages = json_data["items"]
+    message_webex = json_data["items"]
     
     # store the text of the first message in the array
-    message_id = messages[0]["id"]
+    message_id = message_webex[0]["id"]
     if message_id != last_message_id:
         
         # 3. ถ้าเป็นข้อความใหม่ ให้เก็บ ID ของข้อความนี้ไว้ เพื่อใช้เทียบในครั้งถัดไป
         last_message_id = message_id
 
-        message = messages[0]["text"]
+        message = message_webex[0]["text"]
         print(f"Received message: {message}")
 
     # check if the text of the message starts with the magic character "/" followed by your studentID and a space and followed by a command name
     #  e.g.  "/66070123 create"
     student_id = "66070084"
-    if message.startswith(f"/{student_id} "):
+    text = message_webex[0].get("text", "")
+    if text.startswith(f"/{student_id} "):
 
         # extract the command
-        command = message.split(" ")[1]
-        print(command)
+        parts = text.split(" ")
+        responseMessage = ""
+        command_processed = False
 
 # 5. Complete the logic for each command
+        if len(parts) == 2:
+            # --- กรณี 2 ส่วน: /[ID] [command] ---
+            command = parts[1].lower()
+            if command == "restconf":
+                current_method = "restconf"
+                responseMessage = "Ok: Restconf"
+            elif command == "netconf":
+                current_method = "netconf"
+                responseMessage = "Ok: Netconf"
+            else:
+                responseMessage = "Error: No method specified."
+            command_processed = True
+        elif len(parts) == 3:
+            # --- กรณี 3 ส่วน: /[ID] [ip] [command] ---
+            ip_address = parts[1]
+            command = parts[2].lower()
+            if not ip_address.startswith("10.0.15."):
+                responseMessage = f"Error: Invalid IP address '{ip_address}'"
+                command_processed = True
+            elif command in ["create", "delete", "enable", "disable", "status"]:
+                if current_method is None:
+                    responseMessage = "Error: No method specified."
+                elif current_method == "restconf":
+                    if command == "create":
+                        responseMessage = restconf_final.create(ip_address)
+                    elif command == "delete":
+                        responseMessage = restconf_final.delete(ip_address)
+                    elif command == "enable":
+                        responseMessage = restconf_final.enable(ip_address)
+                    elif command == "disable":
+                        responseMessage = restconf_final.disable(ip_address)
+                    elif command == "status":
+                        responseMessage = restconf_final.status(ip_address)
+                    # elif command == "gigabit_status":
+                    #     responseMessage = netmiko_final.gigabit_status()
+                    # elif command == "showrun":
+                    #     responseMessage = ansible_final.showrun()
+                    else:
+                        responseMessage = "Error: No command found"
+                elif current_method == "netconf":
+                    if command == "create":
+                        responseMessage = netconf_final.create(ip_address)
+                    elif command == "delete":
+                        responseMessage = netconf_final.delete(ip_address)
+                    elif command == "enable":
+                        responseMessage = netconf_final.enable(ip_address)
+                    elif command == "disable":
+                        responseMessage = netconf_final.disable(ip_address)
+                    elif command == "status":
+                        responseMessage = netconf_final.status(ip_address)
+                    # elif command == "gigabit_status":
+                    #     responseMessage = netmiko_final.gigabit_status()
+                    # elif command == "showrun":
+                    #     responseMessage = ansible_final.showrun()
+                    else:
+                        responseMessage = "Error: No command found"
 
-        if command == "create":
-            responseMessage = restconf_final.create()
-        elif command == "delete":
-            responseMessage = restconf_final.delete()
-        elif command == "enable":
-            responseMessage = restconf_final.enable()
-        elif command == "disable":
-            responseMessage = restconf_final.disable()
-        elif command == "status":
-            responseMessage = restconf_final.status()
-        elif command == "gigabit_status":
-            responseMessage = netmiko_final.gigabit_status()
-        elif command == "showrun":
-            responseMessage = ansible_final.showrun()
-        else:
-            responseMessage = "Error: No command or unknown command"
-        
 # 6. Complete the code to post the message to the Webex Teams room.
 
         # The Webex Teams POST JSON data for command showrun

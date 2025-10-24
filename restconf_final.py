@@ -2,11 +2,7 @@ import json
 import requests
 requests.packages.urllib3.disable_warnings()
 
-
-ROUTER_IP = "10.0.15.61"
 INTERFACE_NAME = "Loopback66070084"
-api_url = f"https://{ROUTER_IP}/restconf/data/ietf-interfaces:interfaces"
-
 # the RESTCONF HTTP headers, including the Accept and Content-Type
 # Two YANG data formats (JSON and XML) work with RESTCONF 
 headers = {
@@ -15,8 +11,8 @@ headers = {
 }
 basicauth = ("admin", "cisco")
 
-
-def create():
+def create(ip_address):
+    api_url = f"https://{ip_address}/restconf/data/ietf-interfaces:interfaces"
     create_url = api_url
     yangConfig = {
         "ietf-interfaces:interface": {
@@ -45,13 +41,14 @@ def create():
 
     if resp.status_code >= 200 and resp.status_code <= 299:
         print(f"STATUS OK: {resp.status_code}")
-        return f"Interface {INTERFACE_NAME} is created successfully."
+        return f"Interface {INTERFACE_NAME} is created successfully using Restconf."
     else:
         print(f"Error. Status Code: {resp.status_code}")
         return f"Cannot create: Interface {INTERFACE_NAME}."
 
 
-def delete():
+def delete(ip_address):
+    api_url = f"https://{ip_address}/restconf/data/ietf-interfaces:interfaces"
     delete_url = f"{api_url}/interface={INTERFACE_NAME}"
     resp = requests.delete(
         delete_url,
@@ -62,13 +59,14 @@ def delete():
 
     if(resp.status_code >= 200 and resp.status_code <= 299):
         print("STATUS OK: {}".format(resp.status_code))
-        return f"Interface {INTERFACE_NAME} is deleted successfully."
+        return f"Interface {INTERFACE_NAME} is deleted successfully using Restconf."
     else:
         print(f"Error. Status Code: {resp.status_code}")
         return f"Cannot delete: Interface {INTERFACE_NAME}."
 
 
-def enable():
+def enable(ip_address):
+    api_url = f"https://{ip_address}/restconf/data/ietf-interfaces:interfaces"
     check_url = f"{api_url}/interface={INTERFACE_NAME}"
     check_resp = requests.get(check_url, auth=basicauth, headers=headers, verify=False)
     if check_resp.status_code != 200:
@@ -92,13 +90,14 @@ def enable():
 
     if(resp.status_code >= 200 and resp.status_code <= 299):
         print("STATUS OK: {}".format(resp.status_code))
-        return f"Interface {INTERFACE_NAME} is enabled successfully"
+        return f"Interface {INTERFACE_NAME} is enabled successfully using Restconf."
     else:
         print(f"Error. Status Code: {resp.status_code}")
         return f"Cannot enable: Interface {INTERFACE_NAME}"
 
 
-def disable():
+def disable(ip_address):
+    api_url = f"https://{ip_address}/restconf/data/ietf-interfaces:interfaces"
     state_url = f"{api_url}/interface={INTERFACE_NAME}"
     yangConfig = {
         "ietf-interfaces:interface": {
@@ -117,14 +116,14 @@ def disable():
 
     if(resp.status_code >= 200 and resp.status_code <= 299):
         print("STATUS OK: {}".format(resp.status_code))
-        return f"Interface {INTERFACE_NAME} is shutdowned successfully."
+        return f"Interface {INTERFACE_NAME} is shutdowned successfully using Restconf."
     else:
         print(f"Error. Status Code: {resp.status_code}")
         return f"Cannot disable: Interface {INTERFACE_NAME}."
 
 
-def status():
-    api_url_status = f"https://{ROUTER_IP}/restconf/data/ietf-interfaces:interfaces-state/interface={INTERFACE_NAME}"
+def status(ip_address):
+    api_url_status = f"https://{ip_address}/restconf/data/ietf-interfaces:interfaces-state/interface={INTERFACE_NAME}"
 
     resp = requests.get(
         api_url_status,
@@ -140,11 +139,11 @@ def status():
         admin_status = interface_state.get("admin-status", "unknown")
         oper_status = interface_state.get("oper-status", "unknown")
         if admin_status == 'up' and oper_status == 'up':
-            return f"Interface {INTERFACE_NAME} is enabled."
+            return f"Interface {INTERFACE_NAME} is enabled (checked by Restconf)."
         elif admin_status == 'down' and oper_status == 'down':
-            return f"Interface {INTERFACE_NAME} is disabled."
+            return f"Interface {INTERFACE_NAME} is disabled (checked by Restconf)."
     elif(resp.status_code == 404):
         print("STATUS NOT FOUND: {}".format(resp.status_code))
-        return f"No Interface {INTERFACE_NAME}."
+        return f"No Interface {INTERFACE_NAME} (checked by Restconf)."
     else:
         print('Error. Status Code: {}'.format(resp.status_code))
