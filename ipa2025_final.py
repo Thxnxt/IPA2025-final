@@ -128,9 +128,17 @@ while True:
             if not ip_address.startswith("10.0.15."):
                 responseMessage = f"Error: Invalid IP address '{ip_address}'"
                 command_processed = True
+
             elif command == "motd":
                 responseMessage = netmiko_final.get_motd(ip_address)
                 command_processed = True
+            elif command == "gigabit_status":
+                responseMessage = netmiko_final.gigabit_status(ip_address)
+                command_processed = True
+            elif command == "showrun":
+                responseMessage = ansible_final.showrun(ip_address)
+                command_processed = True
+
             elif command in ALL_COMMANDS:
                 if current_method is None:
                     responseMessage = "Error: No method specified."
@@ -145,10 +153,6 @@ while True:
                         responseMessage = restconf_final.disable(ip_address)
                     elif command == "status":
                         responseMessage = restconf_final.status(ip_address)
-                    elif command == "gigabit_status":
-                        responseMessage = netmiko_final.gigabit_status(ip_address)
-                    elif command == "showrun":
-                        responseMessage = ansible_final.showrun(ip_address)
                     else:
                         responseMessage = "Error: No command found"
 
@@ -163,10 +167,6 @@ while True:
                         responseMessage = netconf_final.disable(ip_address)
                     elif command == "status":
                         responseMessage = netconf_final.status(ip_address)
-                    elif command == "gigabit_status":
-                        responseMessage = netmiko_final.gigabit_status(ip_address)
-                    elif command == "showrun":
-                        responseMessage = ansible_final.showrun(ip_address)
                     else:
                         responseMessage = "Error: No command found"
         elif len(parts) >= 4:

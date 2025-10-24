@@ -29,9 +29,9 @@ def showrun(ip):
 
     cmd = [
         "ansible-playbook",
-        "playbook_motd.yaml", 
-        "-i", f"{ip},",
-        "--limit", ip,
+        "playbook_motd.yaml",
+        "-i", "hosts",
+        "--limit", hostname,
         "--extra-vars", f"student_id={student_id} username=admin password=cisco"
     ]
 
@@ -53,12 +53,16 @@ def showrun(ip):
         return f"Error: {str(e)}"
 
 def motd(ip, message):
+    hostname = get_hostname_from_ip(ip)
+    if not hostname:
+        return f"Error: IP {ip} not found in 'hosts' file."
     command = [
         "ansible-playbook",
-        "playbook_motd.yaml",
-        "-i", f"{ip},",
+        "playbook_motd.yaml", #
+        "-i", "hosts",
+        "--limit", hostname,
         "--extra-vars",
-        f'motd_message={message} username=admin password=cisco'
+        f'motd_message={message} student_id={student_id} username=admin password=cisco'
     ]
 
     result = subprocess.run(command, capture_output=True, text=True)
