@@ -1,0 +1,15 @@
+---
+- name: Configure MOTD
+  hosts: cisco
+  gather_facts: false
+  connection: network_cli
+
+  vars:
+    motd_message: "i love networking!"
+
+  tasks:
+    - name: Set MOTD banner
+      cisco.ios.ios_banner:
+        banner: motd
+        text: "{{ motd_message }}"
+        state: present
