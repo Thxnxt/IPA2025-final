@@ -5,4 +5,8 @@ ansible_password=cisco
 ansible_connection=network_cli
 
 [cisco]
-Exam ansible_host=10.0.15.61
+R1 ansible_host=10.0.15.61
+R2 ansible_host=10.0.15.62
+R3 ansible_host=10.0.15.63
+R4 ansible_host=10.0.15.64
+R5 ansible_host=10.0.15.65
