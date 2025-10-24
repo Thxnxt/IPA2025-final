@@ -95,17 +95,17 @@ while True:
         parts = text.split(" ")
         responseMessage = ""
         command_processed = False
-        if parts[1].lower() == "gigabit_status":
-            responseMessage = netmiko_final.gigabit_status()
-            command_processed = True
-        elif parts[1].lower() == "showrun":
-            responseMessage = ansible_final.showrun()
-            command_processed = True
 
 # 5. Complete the logic for each command
         if len(parts) == 2:
             # --- กรณี 2 ส่วน: /[ID] [command] ---
             command = parts[1].lower()
+            if command == "gigabit_status":
+                responseMessage = netmiko_final.gigabit_status()
+                command_processed = True
+            elif command == "showrun":
+                responseMessage = ansible_final.showrun()
+                command_processed = True
             if command == "restconf":
                 current_method = "restconf"
                 responseMessage = "Ok: Restconf"
