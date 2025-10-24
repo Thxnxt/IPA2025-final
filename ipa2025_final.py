@@ -100,13 +100,7 @@ while True:
         if len(parts) == 2:
             # --- กรณี 2 ส่วน: /[ID] [command] ---
             command = parts[1].lower()
-            if command == "gigabit_status":
-                responseMessage = netmiko_final.gigabit_status()
-                command_processed = True
-            elif command == "showrun":
-                responseMessage = ansible_final.showrun()
-                command_processed = True
-            elif command == "restconf":
+            if command == "restconf":
                 current_method = "restconf"
                 responseMessage = "Ok: Restconf"
             elif command == "netconf":
@@ -151,10 +145,10 @@ while True:
                         responseMessage = restconf_final.disable(ip_address)
                     elif command == "status":
                         responseMessage = restconf_final.status(ip_address)
-                    # elif command == "gigabit_status":
-                    #     responseMessage = netmiko_final.gigabit_status(ip_address)
-                    # elif command == "showrun":
-                    #     responseMessage = ansible_final.showrun(ip_address)
+                    elif command == "gigabit_status":
+                        responseMessage = netmiko_final.gigabit_status(ip_address)
+                    elif command == "showrun":
+                        responseMessage = ansible_final.showrun(ip_address)
                     else:
                         responseMessage = "Error: No command found"
 
@@ -169,10 +163,10 @@ while True:
                         responseMessage = netconf_final.disable(ip_address)
                     elif command == "status":
                         responseMessage = netconf_final.status(ip_address)
-                    # elif command == "gigabit_status":
-                    #     responseMessage = netmiko_final.gigabit_status(ip_address)
-                    # elif command == "showrun":
-                    #     responseMessage = ansible_final.showrun(ip_address)
+                    elif command == "gigabit_status":
+                        responseMessage = netmiko_final.gigabit_status(ip_address)
+                    elif command == "showrun":
+                        responseMessage = ansible_final.showrun(ip_address)
                     else:
                         responseMessage = "Error: No command found"
         elif len(parts) >= 4:

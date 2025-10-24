@@ -1,28 +1,54 @@
 import subprocess
 import os
+import re
 
-hostname = "Exam"
 student_id = "66070084"
-output_filename = f"show_run_{student_id}_{hostname}.txt"
+def get_hostname_from_ip(ip_address):
+    try:
+        with open("hosts", "r") as f:
+            for line in f:
+                match = re.search(r"^\s*([\w\d\-_]+)\s+ansible_host=([\d\.]+)", line)
+                if match:
+                    hostname = match.group(1)
+                    ip = match.group(2)
+                    if ip == ip_address:
+                        return hostname
+    except Exception as e:
+        print(f"Error reading hosts file: {e}")
+        return None
 
-def showrun():
-    ip = "10.0.15.61"  # หรือ IP ตายตัว
-    output_filename = "show_run_static.txt"
+def showrun(ip):
+    hostname = get_hostname_from_ip(ip)
+    if not hostname:
+        # ถ้าหา IP ไม่เจอในไฟล์ hosts
+        return f"Error: IP {ip} not found or no hostname mapping in 'hosts' file."
+    output_filename = f"show_run_{student_id}_{hostname}.txt"
+    if os.path.exists(output_filename):
+        os.remove(output_filename)
     cmd = [
         "ansible-playbook",
-        "playbook_showrun.yaml",
-        "-i", f"{ip},",
-        "--extra-vars", "username=admin password=cisco"
+        "playbook_motd.yaml",
+        "-i", "hosts",
+        "--limit", ip,
+        "--extra-vars", f"student_id={student_id} username=admin password=cisco"
     ]
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-        with open(output_filename, "w", encoding="utf-8") as f:
-            f.write(result.stdout.strip())
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         if result.returncode == 0 and os.path.exists(output_filename):
+            # สำเร็จ: คืนชื่อไฟล์กลับไป
             return output_filename
-        return "Error: Failed to get running-config"
+        else:
+            # ล้มเหลว: คืน 'Error: Ansible' ตามโจทย์
+            print("----- Ansible STDOUT (Error) -----")
+            print(result.stdout)
+            print("----- Ansible STDERR (Error) -----")
+            print(result.stderr)
+            return "Error: Ansible"
+    except subprocess.TimeoutExpired:
+        return f"Error: Ansible command timed out for {ip}"
     except Exception as e:
+        # กรณีเกิด Error อื่นๆ
         return f"Error: {str(e)}"
 
 def motd(ip, message):

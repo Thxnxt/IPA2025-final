@@ -1,5 +1,6 @@
 from netmiko import ConnectHandler
 from pprint import pprint
+import re
 
 device_ip = "10.0.15.61"
 username = "admin"
@@ -19,7 +20,8 @@ def gigabit_status(ip):
         "host": ip,
         "username": "admin",
         "password": "cisco",
-        "fast_cli": True
+        "fast_cli": True,
+        "conn_timeout": 60,
     }
 
     try:
@@ -31,6 +33,7 @@ def gigabit_status(ip):
             try:
                 result = ssh.send_command("show ip interface brief", use_textfsm=True)
                 if isinstance(result, list):
+                    # กรองเฉพาะ GigabitEthernet
                     gigabits = [row for row in result if row.get('interface', '').startswith("GigabitEthernet")]
                     
                     interface_messages = []
@@ -50,17 +53,19 @@ def gigabit_status(ip):
                             interface_messages.append(f"{name} administratively down")
                             count_admin_down += 1
                         else:
+                            # สำหรับสถานะอื่น ๆ เช่น 'down (disabled)'
                             interface_messages.append(f"{name} {status}")
 
                     if interface_messages:
+                        # สร้างข้อความสรุปตามรูปแบบที่โจทย์ต้องการ
                         summary = f" -> {count_up} up, {count_down} down, {count_admin_down} administratively down"
                         return ", ".join(interface_messages) + summary
                     else:
                         return "No GigabitEthernet interfaces found."
             except Exception:
-                pass  # ถ้าไม่มี TextFSM template จะใช้ regex ด้านล่างแทน
+                pass  # ถ้า TextFSM ล้มเหลว จะใช้ manual parsing ด้านล่าง
 
-            # fallback: ใช้ manual parsing
+            # fallback: ใช้ manual parsing (กรณีไม่มี TextFSM)
             raw = ssh.send_command("show ip interface brief | include GigabitEthernet")
             lines = [l.strip() for l in raw.splitlines() if l.strip()]
             if not lines:
@@ -73,18 +78,21 @@ def gigabit_status(ip):
                 parts = line.split()
                 if len(parts) >= 6:
                     name = parts[0]
-                    status = parts[4].lower()
-                    if status == 'up':
-                        interface_messages.append(f"{name} up")
-                        count_up += 1
-                    elif status == 'down':
-                        interface_messages.append(f"{name} down")
-                        count_down += 1
-                    elif 'administratively down' in status:
+                    # สถานะอยู่ที่ index 4 (status) และ 5 (protocol)
+                    # แต่เราสนใจแค่ status (index 4) หรือถ้าเป็น admin down (index 4+5)
+                    status_line = " ".join(parts[4:]).lower() # เอาส่วนที่เหลือมาต่อกัน
+                    
+                    if 'administratively down' in status_line:
                         interface_messages.append(f"{name} administratively down")
                         count_admin_down += 1
+                    elif 'up' in parts[4].lower(): # ตรวจสอบ status
+                        interface_messages.append(f"{name} up")
+                        count_up += 1
+                    elif 'down' in parts[4].lower():
+                        interface_messages.append(f"{name} down")
+                        count_down += 1
                     else:
-                        interface_messages.append(f"{name} {status}")
+                        interface_messages.append(f"{name} {status_line}")
 
             summary = f" -> {count_up} up, {count_down} down, {count_admin_down} administratively down"
             return ", ".join(interface_messages) + summary
