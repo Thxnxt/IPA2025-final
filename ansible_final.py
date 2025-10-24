@@ -28,13 +28,6 @@ def showrun():
         return "Error: Ansible playbook failed. Please check terminal for errors."
 
 def motd(ip, message):
-    hostname = "Exam"
-    student_id = "66070084"
-    motd_file = f"motd_{student_id}_{hostname}.txt"
-
-    if os.path.exists(motd_file):
-        os.remove(motd_file)
-
     command = [
         "ansible-playbook",
         "playbook_motd.yaml",
