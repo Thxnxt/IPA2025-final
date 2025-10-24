@@ -1,5 +1,6 @@
 from netmiko import ConnectHandler
 from pprint import pprint
+from textfsm import clitable 
 
 device_ip = "10.0.15.61"
 username = "admin"
@@ -13,27 +14,25 @@ device_params = {
     "conn_timeout": 60,
 }
 
-def gigabit_status():
-    ans = ""
-    with ConnectHandler(**device_params) as ssh:
-        ssh.disable_paging()
-        up = 0
-        down = 0
-        admin_down = 0
-        interfaces = []
-        result = ssh.send_command("sh ip int bri", use_textfsm=True)
-        for status in result:
-            if status["interface"].startswith("GigabitEthernet"):
-                interfaces.append(f"{status['interface']} {status['status']}")
-                if status["status"] == "up":
-                    up += 1
-                elif status["status"] == "down":
-                    down += 1
-                elif status["status"] == "administratively down":
-                    admin_down += 1
-        ans = ", ".join(interfaces) + f" -> {up} up, {down} down, {admin_down} administratively down"
-        pprint(ans)
-        return ans
+def gigabit_status(ip):
+    device = {
+        "device_type": "cisco_ios",
+        "host": ip,
+        "username": "admin",
+        "password": "cisco",
+        "fast_cli": True,
+    }
+    try:
+        with ConnectHandler(**device) as ssh:
+            ssh.disable_paging()
+            out = ssh.send_command("show ip interface brief | include GigabitEthernet")
+        lines = [l for l in out.splitlines() if l.strip()]
+        if not lines:
+            return "No GigabitEthernet interfaces found."
+        return "\n".join(lines)
+
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 def get_motd(ip):
     device_params = {

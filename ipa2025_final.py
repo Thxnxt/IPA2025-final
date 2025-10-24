@@ -146,9 +146,9 @@ while True:
                     elif command == "status":
                         responseMessage = restconf_final.status(ip_address)
                     elif command == "gigabit_status":
-                        responseMessage = netmiko_final.gigabit_status()
+                        responseMessage = netmiko_final.gigabit_status(ip_address)
                     elif command == "showrun":
-                        responseMessage = ansible_final.showrun()
+                        responseMessage = ansible_final.showrun(ip_address)
                     else:
                         responseMessage = "Error: No command found"
 
@@ -164,9 +164,9 @@ while True:
                     elif command == "status":
                         responseMessage = netconf_final.status(ip_address)
                     elif command == "gigabit_status":
-                        responseMessage = netmiko_final.gigabit_status()
+                        responseMessage = netmiko_final.gigabit_status(ip_address)
                     elif command == "showrun":
-                        responseMessage = ansible_final.showrun()
+                        responseMessage = ansible_final.showrun(ip_address)
                     else:
                         responseMessage = "Error: No command found"
         elif len(parts) >= 4:

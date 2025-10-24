@@ -1,31 +1,32 @@
 import subprocess
 import os
+import datetime
 
 hostname = "Exam"
 student_id = "66070084"
 output_filename = f"show_run_{student_id}_{hostname}.txt"
 
-def showrun():
-    if os.path.exists(output_filename):
-        os.remove(output_filename)
+def showrun(ip):
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_file = f"show_run_{student_id}_{ip}_{ts}.txt"
 
-    command = ['ansible-playbook', 'playbook.yaml']
-    result = subprocess.run(command, capture_output=True, text=True)
-    
-    # --- นี่คือส่วนที่แก้ไข ---
-    # เราจะพิมพ์ทั้ง stdout (ผลลัพธ์ปกติ) และ stderr (ผลลัพธ์ Error)
-    print("----- Ansible STDOUT -----")
-    print(result.stdout)
-    print("----- Ansible STDERR (Error) -----")
-    print(result.stderr) # <-- เพิ่มบรรทัดนี้เพื่อดู Error ที่แท้จริง
-    print("----- End Ansible Output -----")
+    cmd = [
+        "ansible-playbook",
+        "playbook_showrun.yaml",
+        "-i", f"{ip},",
+        "--extra-vars", "username=admin password=cisco",
+    ]
 
-    # เราจะเช็คผลลัพธ์จาก stdout เหมือนเดิม
-    # แต่ตอนนี้เราจะเห็น Error ที่แท้จริงใน Terminal แล้ว
-    if 'failed=0' in result.stdout:
-        return output_filename
-    else:
-        return "Error: Ansible playbook failed. Please check terminal for errors."
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        with open(out_file, "w", encoding="utf-8") as f:
+            f.write(result.stdout)
+
+        if result.returncode == 0 and os.path.getsize(out_file) > 0:
+            return out_file
+        return f"Error: Failed to get running-config for {ip}"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 def motd(ip, message):
     command = [
