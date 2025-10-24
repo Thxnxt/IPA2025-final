@@ -2,7 +2,7 @@
 - name: Configure MOTD
   hosts: all
   connection: network_cli
-  gather_facts: no
+  gather_facts: false
   vars:
     ansible_network_os: cisco.ios.ios
     ansible_user: "{{ username }}"
@@ -11,4 +11,4 @@
     - name: Set MOTD Banner
       ios_config:
         lines:
-          - banner motd !{{ motd_message }}!
+          - banner motd @{{ motd_message }}@
