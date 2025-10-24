@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-hostname = "Test-Pod"
+hostname = "Exam"
 student_id = "66070084"
 output_filename = f"show_run_{student_id}_{hostname}.txt"
 
@@ -26,3 +26,30 @@ def showrun():
         return output_filename
     else:
         return "Error: Ansible playbook failed. Please check terminal for errors."
+
+def motd(ip, message):
+    hostname = "Exam"
+    student_id = "66070084"
+    motd_file = f"motd_{student_id}_{hostname}.txt"
+
+    if os.path.exists(motd_file):
+        os.remove(motd_file)
+
+    command = [
+        "ansible-playbook",
+        "playbook_motd.yaml",
+        "-i", f"{ip},",
+        "-e", f"motd_message='{message}'"
+    ]
+
+    result = subprocess.run(command, capture_output=True, text=True)
+
+    print("----- Ansible STDOUT -----")
+    print(result.stdout)
+    print("----- Ansible STDERR -----")
+    print(result.stderr)
+
+    if 'failed=0' in result.stdout:
+        return "Ok: success"
+    else:
+        return "Error: Failed to configure MOTD"
