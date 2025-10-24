@@ -27,13 +27,13 @@ def showrun():
     else:
         return "Error: Ansible playbook failed. Please check terminal for errors."
 
-def motd(ip, message, username="admin", password="cisco"):
+def motd(ip, message):
     command = [
         "ansible-playbook",
         "playbook_motd.yaml",
         "-i", f"{ip},",
         "--extra-vars",
-        f"username={username} password={password} motd_message='{message}'"
+        f'motd_message={message} username=admin password=cisco'
     ]
 
     result = subprocess.run(command, capture_output=True, text=True)

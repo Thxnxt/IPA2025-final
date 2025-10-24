@@ -8,7 +8,17 @@
     ansible_user: "{{ username }}"
     ansible_password: "{{ password }}"
   tasks:
-    - name: Set MOTD Banner
+    - name: Set MOTD banner using block (to avoid C prefix)
       ios_config:
         lines:
+          - no banner motd
+    - name: Configure MOTD cleanly
+      ios_config:
+        parents: []
+        lines: []
+        before: []
+        after: []
+        match: none
+        replace: config
+        commands:
           - banner motd @{{ motd_message }}@
